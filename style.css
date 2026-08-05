@@ -2,6 +2,7 @@
     margin:0;
     padding:0;
     box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
 }
 
 html,
@@ -18,27 +19,25 @@ body{
 
     user-select:none;
 
-    -webkit-user-select:none;
+    font-family:sans-serif;
 
 }
 
-#viewer{
+#viewport{
 
-    position:relative;
+    position:fixed;
 
-    width:100vw;
-    height:100vh;
+    inset:0;
 
     overflow:hidden;
 
-    perspective:2500px;
-
     background:#000;
+
+    perspective:2200px;
 
 }
 
-#page-back,
-#page-front{
+#book{
 
     position:absolute;
 
@@ -48,26 +47,17 @@ body{
 
 }
 
-#page-back{
+#pageBack{
+
+    position:absolute;
+
+    inset:0;
 
     z-index:1;
 
 }
 
-#page-front{
-
-    z-index:2;
-
-    transform-origin:left center;
-
-    transform-style:preserve-3d;
-
-    will-change:transform;
-
-}
-
-#page-back img,
-#page-front img{
+#backImage{
 
     position:absolute;
 
@@ -79,51 +69,132 @@ body{
 
     object-fit:cover;
 
-    object-position:center center;
-
-    pointer-events:none;
-
-    user-select:none;
-
-    -webkit-user-drag:none;
+    object-position:center;
 
 }
 
-#page-shadow{
+#pageFront{
 
     position:absolute;
 
     inset:0;
 
+    z-index:2;
+
     pointer-events:none;
+
+    overflow:visible;
+
+    transform-style:preserve-3d;
+
+}
+
+#mesh{
+
+    position:absolute;
+
+    inset:0;
+
+    transform-style:preserve-3d;
+
+    will-change:transform;
+
+}
+
+/* ---------- BANDAS ---------- */
+
+.strip{
+
+    position:absolute;
+
+    top:0;
+    bottom:0;
+
+    overflow:hidden;
+
+    transform-origin:left center;
+
+    transform-style:preserve-3d;
+
+    backface-visibility:hidden;
+
+    will-change:
+        transform,
+        filter;
+
+}
+
+.strip img{
+
+    position:absolute;
+
+    top:0;
+    bottom:0;
+
+    height:100%;
+
+    object-fit:cover;
+
+    object-position:center;
+
+    pointer-events:none;
+
+}
+
+/* ---------- SOMBRA ---------- */
+
+.strip::after{
+
+    content:"";
+
+    position:absolute;
+
+    inset:0;
 
     opacity:0;
 
+    pointer-events:none;
+
     background:
+
         linear-gradient(
+
             to right,
-            rgba(0,0,0,.45),
-            rgba(0,0,0,.20) 20%,
-            transparent 50%
+
+            rgba(0,0,0,.55),
+
+            rgba(0,0,0,.15) 40%,
+
+            transparent
+
         );
 
 }
 
-#page-highlight{
+/* ---------- BRILLO ---------- */
+
+.strip::before{
+
+    content:"";
 
     position:absolute;
 
     inset:0;
 
-    pointer-events:none;
-
     opacity:0;
 
+    pointer-events:none;
+
     background:
+
         linear-gradient(
+
             to left,
+
             rgba(255,255,255,.18),
-            transparent 25%
+
+            transparent 35%
+
         );
 
 }

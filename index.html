@@ -1,45 +1,48 @@
 <!DOCTYPE html>
+
 <html lang="es">
 
 <head>
 
 <meta charset="UTF-8">
 
-<meta name="viewport"
-      content="width=device-width,
-               initial-scale=1,
-               maximum-scale=1,
-               user-scalable=no">
+<meta
+    name="viewport"
+    content="width=device-width,
+             initial-scale=1,
+             maximum-scale=1,
+             user-scalable=no">
 
-<title>Apple Books Demo</title>
+<title>Apple Books Engine</title>
 
-<link rel="stylesheet" href="style.css">
+<link
+    rel="stylesheet"
+    href="style.css">
 
 </head>
 
 <body>
 
-<div id="viewer">
+<div id="viewport">
 
-    <div id="page-back">
+    <div id="book">
 
-        <img
-            id="next-image"
-            src="img/2.jpg"
-            draggable="false">
+        <div id="pageBack">
 
-    </div>
+            <img
+                id="backImage"
+                src="img/2.jpg"
+                draggable="false">
 
-    <div id="page-front">
+        </div>
 
-        <img
-            id="current-image"
-            src="img/1.jpg"
-            draggable="false">
+        <div id="pageFront">
 
-        <div id="page-shadow"></div>
+            <div id="mesh">
 
-        <div id="page-highlight"></div>
+            </div>
+
+        </div>
 
     </div>
 

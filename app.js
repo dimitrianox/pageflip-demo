@@ -1,96 +1,177 @@
-const viewer = document.getElementById("viewer");
-const front = document.getElementById("page-front");
-const shadow = document.getElementById("page-shadow");
-const highlight = document.getElementById("page-highlight");
+const STRIPS = 48;
+
+const mesh = document.getElementById("mesh");
+
+const viewport = document.getElementById("viewport");
+
+const frontImage = "img/1.jpg";
+
+const backImage = document.getElementById("backImage");
+
+let strips = [];
 
 let dragging = false;
+
 let startX = 0;
+
 let progress = 0;
 
-function clamp(v, min, max) {
-    return Math.max(min, Math.min(max, v));
-}
+let width = 0;
 
-function ease(t) {
-    return 1 - Math.pow(1 - t, 3);
-}
+let height = 0;
 
-function render(p) {
 
-    progress = clamp(p, 0, 1);
 
-    const angle = -180 * progress;
+function createMesh(){
 
-    front.style.transform =
-        `rotateY(${angle}deg)`;
+    mesh.innerHTML="";
 
-    shadow.style.opacity =
-        (progress * 0.75).toFixed(2);
+    strips=[];
 
-    highlight.style.opacity =
-        (progress * 0.35).toFixed(2);
+    width=window.innerWidth;
 
-}
+    height=window.innerHeight;
 
-viewer.addEventListener("pointerdown", e => {
+    const stripWidth=Math.ceil(width/STRIPS);
 
-    dragging = true;
+    for(let i=0;i<STRIPS;i++){
 
-    startX = e.clientX;
+        const strip=document.createElement("div");
 
-    viewer.setPointerCapture(e.pointerId);
+        strip.className="strip";
 
-});
+        strip.style.width=stripWidth+"px";
 
-viewer.addEventListener("pointermove", e => {
+        strip.style.left=(i*stripWidth)+"px";
 
-    if (!dragging) return;
 
-    const dx = startX - e.clientX;
 
-    render(dx / window.innerWidth);
+        const img=document.createElement("img");
 
-});
+        img.src=frontImage;
 
-viewer.addEventListener("pointerup", finish);
-viewer.addEventListener("pointercancel", finish);
+        img.draggable=false;
 
-function finish() {
 
-    if (!dragging) return;
 
-    dragging = false;
+        img.style.width=width+"px";
 
-    const target =
-        progress > 0.5 ? 1 : 0;
+        img.style.left=(-i*stripWidth)+"px";
 
-    const from = progress;
 
-    const start = performance.now();
 
-    function animate(now) {
+        strip.appendChild(img);
 
-        let t =
-            (now - start) / 260;
+        mesh.appendChild(strip);
 
-        if (t > 1) t = 1;
-
-        t = ease(t);
-
-        render(
-            from + (target - from) * t
-        );
-
-        if (t < 1) {
-
-            requestAnimationFrame(animate);
-
-        }
+        strips.push(strip);
 
     }
 
-    requestAnimationFrame(animate);
+}
+
+function render(progress){
+
+    progress=Math.max(0,Math.min(1,progress));
+
+    const angle=180*progress;
+
+    const fold=Math.sin(progress*Math.PI);
+
+    const stripWidth=width/STRIPS;
+
+    for(let i=0;i<STRIPS;i++){
+
+        const strip=strips[i];
+
+        const ratio=i/(STRIPS-1);
+
+        const local=angle*(0.15+ratio*0.85);
+
+        const translate=fold*ratio*40;
+
+        const depth=fold*ratio*120;
+
+        strip.style.transform=`
+            translateX(${translate}px)
+            translateZ(${depth}px)
+            rotateY(${-local}deg)
+        `;
+
+        strip.style.filter=
+            `brightness(${1-ratio*progress*0.35})`;
+
+        strip.style.setProperty(
+            "--shadow",
+            progress
+        );
+
+        strip.style.setProperty(
+            "--highlight",
+            progress
+        );
+
+        strip.style.zIndex=
+            STRIPS-i;
+
+    }
 
 }
 
+function pointerDown(e){
+
+    dragging=true;
+
+    startX=e.clientX;
+
+}
+
+function pointerMove(e){
+
+    if(!dragging)return;
+
+    const dx=startX-e.clientX;
+
+    progress=dx/width;
+
+    render(progress);
+
+}
+
+function pointerUp(){
+
+    if(!dragging)return;
+
+    dragging=false;
+
+}
+
+viewport.addEventListener(
+    "pointerdown",
+    pointerDown
+);
+
+viewport.addEventListener(
+    "pointermove",
+    pointerMove
+);
+
+viewport.addEventListener(
+    "pointerup",
+    pointerUp
+);
+
+viewport.addEventListener(
+    "pointercancel",
+    pointerUp
+);
+
+window.addEventListener(
+    "resize",
+    createMesh
+);
+
+createMesh();
+
 render(0);
+

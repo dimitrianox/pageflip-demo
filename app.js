@@ -3,8 +3,9 @@
 /* Atlas Memories: CSS owns sizing and centering; this file owns behavior. */
 (() => {
   const config = { defaultAlbum: "londres-2025", swipeThreshold: 72, preloadDistance: 1 };
-  const state = { albumId: "", pages: [], current: 0, primaryVisible: true, renderToken: 0, startX: 0, startY: 0, deltaX: 0, dragging: false, horizontal: false };
+  const state = { albumId: "", pages: [], current: 0, primaryVisible: true, renderToken: 0, startX: 0, startY: 0, deltaX: 0, dragging: false, horizontal: false, transitioning: false, webglReady: false };
   const ui = {};
+  let webgl = null;
 
   document.addEventListener("DOMContentLoaded", init);
 
@@ -33,6 +34,164 @@
     ui.title = document.getElementById("title");
     ui.location = document.getElementById("location");
     ui.date = document.getElementById("date");
+  }
+
+  // =====================================================
+  // WebGL Transition System (Demo 4 effect)
+  // =====================================================
+
+  function initWebGL() {
+    if (state.webglReady || !window.THREE) return;
+    
+    const vertex = `varying vec2 vUv;void main() {vUv = uv;gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );}`;
+    const fragment = `
+      uniform float time;
+      uniform float progress;
+      uniform float width;
+      uniform float scaleX;
+      uniform float scaleY;
+      uniform float transition;
+      uniform float radius;
+      uniform float swipe;
+      uniform sampler2D texture1;
+      uniform sampler2D texture2;
+      uniform sampler2D displacement;
+      uniform vec4 resolution;
+
+      varying vec2 vUv;
+      varying vec4 vPosition;
+      vec2 mirrored(vec2 v) {
+        vec2 m = mod(v,2.);
+        return mix(m,2.0 - m, step(1.0 ,m));
+      }
+
+      void main() {
+        vec2 newUV = (vUv - vec2(0.5))*resolution.zw + vec2(0.5);
+        vec4 noise = texture2D(displacement, mirrored(newUV+time*0.04));
+        float prog = progress*0.8 -0.05 + noise.g * 0.06;
+        float intpl = pow(abs(smoothstep(0., 1., (prog*2. - vUv.x + 0.5))), 10.);
+
+        vec4 t1 = texture2D( texture1, (newUV - 0.5) * (1.0 - intpl) + 0.5 ) ;
+        vec4 t2 = texture2D( texture2, (newUV - 0.5) * intpl + 0.5 );
+        gl_FragColor = mix( t1, t2, intpl );
+      }
+    `;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    
+    const renderer = new THREE.WebGLRenderer({ alpha: true, premultipliedAlpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(ui.media.offsetWidth, ui.media.offsetHeight);
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.inset = '0';
+    renderer.domElement.style.zIndex = '5';
+    renderer.domElement.style.pointerEvents = 'none';
+    ui.media.appendChild(renderer.domElement);
+
+    const material = new THREE.ShaderMaterial({
+      extensions: { derivatives: "#extension GL_OES_standard_derivatives : enable" },
+      side: THREE.DoubleSide,
+      uniforms: {
+        time: { value: 0 },
+        progress: { value: 0 },
+        scaleX: { value: 40 },
+        scaleY: { value: 40 },
+        transition: { value: 40 },
+        swipe: { value: 0 },
+        width: { value: 0 },
+        radius: { value: 0 },
+        texture1: { value: null },
+        texture2: { value: null },
+        displacement: { value: null },
+        resolution: { value: new THREE.Vector4(1, 1, 1, 1) },
+      },
+      vertexShader: vertex,
+      fragmentShader: fragment,
+      transparent: true
+    });
+
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const plane = new THREE.Mesh(geometry, material);
+    scene.add(plane);
+
+    // Generate procedural noise texture for displacement
+    const noiseSize = 256;
+    const noiseData = new Uint8Array(noiseSize * noiseSize * 4);
+    for (let i = 0; i < noiseData.length; i += 4) {
+      const val = Math.random() * 255;
+      noiseData[i] = val;
+      noiseData[i + 1] = val;
+      noiseData[i + 2] = val;
+      noiseData[i + 3] = 255;
+    }
+    const noiseTexture = new THREE.DataTexture(noiseData, noiseSize, noiseSize, THREE.RGBA_FORMAT);
+    noiseTexture.needsUpdate = true;
+    noiseTexture.wrapS = THREE.RepeatWrapping;
+    noiseTexture.wrapT = THREE.RepeatWrapping;
+    material.uniforms.displacement.value = noiseTexture;
+
+    webgl = { scene, camera, renderer, material, plane, time: 0, isAnimating: false };
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      if (webgl) {
+        webgl.renderer.setSize(ui.media.offsetWidth, ui.media.offsetHeight);
+      }
+    });
+
+    state.webglReady = true;
+  }
+
+  function startWebGLAnimation() {
+    if (!webgl || webgl.isAnimating) return;
+    webgl.isAnimating = true;
+    animateWebGL();
+  }
+
+  function animateWebGL() {
+    if (!webgl || !webgl.isAnimating) return;
+    webgl.time += 0.05;
+    webgl.material.uniforms.time.value = webgl.time;
+    webgl.renderer.render(webgl.scene, webgl.camera);
+    requestAnimationFrame(animateWebGL);
+  }
+
+  function transitionToImage(nextTexture, onComplete) {
+    if (!webgl || !webgl.material.uniforms.texture1.value) {
+      onComplete();
+      return;
+    }
+
+    webgl.material.uniforms.texture2.value = nextTexture;
+    webgl.material.uniforms.progress.value = 0;
+    webgl.renderer.domElement.style.display = 'block';
+    
+    startWebGLAnimation();
+
+    const duration = 1500; // ms
+    const startTime = performance.now();
+
+    function animate() {
+      const elapsed = performance.now() - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      // Ease out
+      const eased = 1 - Math.pow(1 - t, 3);
+      
+      webgl.material.uniforms.progress.value = eased;
+
+      if (t < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Complete transition
+        webgl.material.uniforms.texture1.value = nextTexture;
+        webgl.material.uniforms.progress.value = 0;
+        webgl.renderer.domElement.style.display = 'none';
+        onComplete();
+      }
+    }
+
+    animate();
   }
 
   async function loadAlbum() {
@@ -78,15 +237,38 @@
     try { await loadImage(next, mediaUrl(page)); }
     catch (error) { if (token === state.renderToken) console.error("No se pudo cargar la imagen:", error); return; }
     if (token !== state.renderToken) return;
+
+    // Initialize WebGL on first photo if not ready
+    if (!state.webglReady && !immediate) {
+      initWebGL();
+    }
+
     next.style.translate = "0 0";
     next.style.display = "block";
     next.style.opacity = "1";
-    if (immediate || visible.style.display === "none" || !visible.src) {
+
+    if (immediate || visible.style.display === "none" || !visible.src || !state.webglReady) {
+      // First load or no WebGL - just switch
       visible.style.display = "none";
       visible.style.opacity = "0";
+      if (webgl && webgl.material.uniforms.texture1.value === null) {
+        // Set up WebGL with first texture after image loads
+        const tex = new THREE.Texture(next);
+        tex.needsUpdate = true;
+        webgl.material.uniforms.texture1.value = tex;
+        webgl.renderer.domElement.style.display = 'none';
+        // Force initial render
+        webgl.renderer.render(webgl.scene, webgl.camera);
+      }
     } else {
-      visible.style.opacity = "0";
-      setTimeout(() => { if (token === state.renderToken) visible.style.display = "none"; }, 260);
+      // WebGL transition
+      const nextTex = new THREE.Texture(next);
+      nextTex.needsUpdate = true;
+      
+      transitionToImage(nextTex, () => {
+        visible.style.display = "none";
+        visible.style.opacity = "0";
+      });
     }
     state.primaryVisible = !state.primaryVisible;
   }

@@ -1,0 +1,309 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600&display=swap");
+
+/* ==========================================================
+   RESET
+========================================================== */
+
+*{
+
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+
+    -webkit-tap-highlight-color:transparent;
+
+}
+
+html,
+body{
+
+    width:100%;
+    height:100%;
+
+    overflow:hidden;
+
+    background:#000;
+
+    color:#fff;
+
+    font-family:"Manrope",sans-serif;
+
+    color-scheme:dark;
+
+}
+
+body{
+
+    touch-action:pan-y;
+
+    overscroll-behavior:none;
+
+    user-select:none;
+
+}
+
+/* ==========================================================
+   APP
+========================================================== */
+
+#app{
+
+    position:fixed;
+
+    inset:0;
+
+    width:100%;
+    height:100dvh;
+
+    background:#000;
+
+    overflow:hidden;
+
+}
+
+/* ==========================================================
+   LIBRO
+========================================================== */
+
+#book{
+
+    position:relative;
+
+    width:100%;
+    height:100%;
+
+    overflow:hidden;
+
+}
+
+/* ==========================================================
+   PÁGINA
+========================================================== */
+
+#page{
+
+    position:absolute;
+
+    inset:0;
+
+    overflow:hidden;
+
+    background:#000;
+
+}
+
+/* ==========================================================
+   CONTENIDO
+========================================================== */
+
+#media{
+
+    position:absolute;
+
+    inset:0;
+
+    background:#000;
+
+    overflow:hidden;
+
+}
+
+/* ==========================================================
+   IMÁGENES / VIDEO
+========================================================== */
+
+#primaryImage,
+#secondaryImage,
+#video{
+
+    position:absolute;
+
+    inset:0;
+
+    width:100%;
+    height:100%;
+
+    object-fit:cover;
+
+    object-position:center center;
+
+    display:none;
+
+    background:#000;
+
+    user-select:none;
+
+    -webkit-user-drag:none;
+
+}
+
+#primaryImage{
+
+    z-index:1;
+
+}
+
+#secondaryImage{
+
+    z-index:2;
+
+}
+
+#video{
+
+    z-index:3;
+
+}
+
+/* ==========================================================
+   OVERLAY
+========================================================== */
+
+#overlay{
+
+    position:absolute;
+
+    left:0;
+    right:0;
+    bottom:0;
+
+    z-index:20;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:flex-end;
+
+    padding:
+        64px
+        28px
+        calc(env(safe-area-inset-bottom,0px) + 40px)
+        28px;
+
+    background:linear-gradient(
+        to top,
+        rgba(0,0,0,.82) 0%,
+        rgba(0,0,0,.45) 35%,
+        rgba(0,0,0,.15) 65%,
+        rgba(0,0,0,0) 100%
+    );
+
+    pointer-events:none;
+
+}
+
+/* ==========================================================
+   TÍTULOS
+========================================================== */
+
+#title{
+
+    font-size:clamp(36px,8vw,58px);
+
+    font-weight:300;
+
+    line-height:1;
+
+    margin-bottom:12px;
+
+    text-shadow:0 2px 16px rgba(0,0,0,.45);
+
+}
+
+#location{
+
+    font-size:18px;
+
+    margin-bottom:8px;
+
+    opacity:.90;
+
+}
+
+#date{
+
+    font-size:15px;
+
+    letter-spacing:4px;
+
+    text-transform:uppercase;
+
+    opacity:.70;
+
+}
+
+#title:empty,
+#location:empty,
+#date:empty{
+
+    display:none;
+
+}
+
+/* ==========================================================
+   FADE
+========================================================== */
+
+#fade{
+
+    position:absolute;
+
+    inset:0;
+
+    z-index:100;
+
+    background:#000;
+
+    opacity:1;
+
+    pointer-events:none;
+
+    transition:opacity .45s ease;
+
+}
+
+body.ready #fade{
+
+    opacity:0;
+
+}
+
+/* ==========================================================
+   TRANSICIONES
+========================================================== */
+
+#primaryImage,
+#secondaryImage{
+
+    transition:
+        opacity .25s ease;
+
+}
+
+/* ==========================================================
+   CAPAS
+========================================================== */
+
+#media{
+
+    z-index:1;
+
+}
+
+#overlay{
+
+    z-index:10;
+
+}
+
+#fade{
+
+    z-index:100;
+
+}
+
+/* ==========================================================
+   FIN
+========================================================== */
+

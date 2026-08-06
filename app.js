@@ -71,7 +71,10 @@
     `;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    
+    // Use PerspectiveCamera like the original demo
+    const camera = new THREE.PerspectiveCamera(70, ui.media.offsetWidth / ui.media.offsetHeight, 0.001, 1000);
+    camera.position.set(0, 0, 2);
     
     const renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -99,7 +102,8 @@
       transparent: true
     });
 
-    const geometry = new THREE.PlaneGeometry(2, 2);
+    // Plane geometry like original demo
+    const geometry = new THREE.PlaneGeometry(1, 1, 2, 2);
     const plane = new THREE.Mesh(geometry, material);
     scene.add(plane);
 
@@ -126,7 +130,21 @@
     // Handle resize
     window.addEventListener('resize', () => {
       if (webgl) {
-        webgl.renderer.setSize(ui.media.offsetWidth, ui.media.offsetHeight);
+        const w = ui.media.offsetWidth;
+        const h = ui.media.offsetHeight;
+        webgl.renderer.setSize(w, h);
+        webgl.camera.aspect = w / h;
+        
+        // Scale plane like original demo
+        webgl.plane.scale.x = webgl.camera.aspect;
+        webgl.plane.scale.y = 1;
+        
+        // Update FOV like original demo
+        const dist = webgl.camera.position.z;
+        const height = 1;
+        webgl.camera.fov = 2*(180/Math.PI)*Math.atan(height/(2*dist));
+        webgl.camera.updateProjectionMatrix();
+        
         updateResolution();
       }
     });
@@ -142,6 +160,7 @@
         imageAspect = texture.image.naturalWidth / texture.image.naturalHeight;
       }
       
+      // Match original demo formula exactly
       let a1, a2;
       if (h / w > imageAspect) {
         a1 = (w / h) * imageAspect;
@@ -150,10 +169,16 @@
         a1 = 1;
         a2 = (h / w) / imageAspect;
       }
-      webgl.material.uniforms.resolution.value.set(w, h, a1, a2);
+      webgl.material.uniforms.resolution.value.x = w;
+      webgl.material.uniforms.resolution.value.y = h;
+      webgl.material.uniforms.resolution.value.z = a1;
+      webgl.material.uniforms.resolution.value.w = a2;
     }
 
     webgl.updateResolution = updateResolution;
+
+    // Initial setup
+    updateResolution();
 
     state.webglReady = true;
   }

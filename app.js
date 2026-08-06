@@ -47,19 +47,12 @@
     const fragment = `
       uniform float time;
       uniform float progress;
-      uniform float width;
-      uniform float scaleX;
-      uniform float scaleY;
-      uniform float transition;
-      uniform float radius;
-      uniform float swipe;
       uniform sampler2D texture1;
       uniform sampler2D texture2;
       uniform sampler2D displacement;
       uniform vec4 resolution;
 
       varying vec2 vUv;
-      varying vec4 vPosition;
       vec2 mirrored(vec2 v) {
         vec2 m = mod(v,2.);
         return mix(m,2.0 - m, step(1.0 ,m));
@@ -80,27 +73,22 @@
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     
-    const renderer = new THREE.WebGLRenderer({ alpha: true, premultipliedAlpha: false });
+    const renderer = new THREE.WebGLRenderer({ alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(ui.media.offsetWidth, ui.media.offsetHeight);
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.inset = '0';
-    renderer.domElement.style.zIndex = '5';
+    renderer.domElement.style.zIndex = '10'; // Above images
     renderer.domElement.style.pointerEvents = 'none';
+    renderer.domElement.style.display = 'none'; // Start hidden
     ui.media.appendChild(renderer.domElement);
 
     const material = new THREE.ShaderMaterial({
-      extensions: { derivatives: "#extension GL_OES_standard_derivatives : enable" },
+      extensions: { derivatives: true },
       side: THREE.DoubleSide,
       uniforms: {
         time: { value: 0 },
         progress: { value: 0 },
-        scaleX: { value: 40 },
-        scaleY: { value: 40 },
-        transition: { value: 40 },
-        swipe: { value: 0 },
-        width: { value: 0 },
-        radius: { value: 0 },
         texture1: { value: null },
         texture2: { value: null },
         displacement: { value: null },
@@ -119,7 +107,7 @@
     const noiseSize = 256;
     const noiseData = new Uint8Array(noiseSize * noiseSize * 4);
     for (let i = 0; i < noiseData.length; i += 4) {
-      const val = Math.random() * 255;
+      const val = Math.floor(Math.random() * 256);
       noiseData[i] = val;
       noiseData[i + 1] = val;
       noiseData[i + 2] = val;
@@ -129,6 +117,8 @@
     noiseTexture.needsUpdate = true;
     noiseTexture.wrapS = THREE.RepeatWrapping;
     noiseTexture.wrapT = THREE.RepeatWrapping;
+    noiseTexture.magFilter = THREE.LinearFilter;
+    noiseTexture.minFilter = THREE.LinearFilter;
     material.uniforms.displacement.value = noiseTexture;
 
     webgl = { scene, camera, renderer, material, plane, time: 0, isAnimating: false };
@@ -137,8 +127,33 @@
     window.addEventListener('resize', () => {
       if (webgl) {
         webgl.renderer.setSize(ui.media.offsetWidth, ui.media.offsetHeight);
+        updateResolution();
       }
     });
+
+    function updateResolution(texture) {
+      if (!webgl) return;
+      const w = ui.media.offsetWidth;
+      const h = ui.media.offsetHeight;
+      
+      // Get image aspect from texture
+      let imageAspect = 1;
+      if (texture && texture.image) {
+        imageAspect = texture.image.naturalWidth / texture.image.naturalHeight;
+      }
+      
+      let a1, a2;
+      if (h / w > imageAspect) {
+        a1 = (w / h) * imageAspect;
+        a2 = 1;
+      } else {
+        a1 = 1;
+        a2 = (h / w) / imageAspect;
+      }
+      webgl.material.uniforms.resolution.value.set(w, h, a1, a2);
+    }
+
+    webgl.updateResolution = updateResolution;
 
     state.webglReady = true;
   }
@@ -163,9 +178,16 @@
       return;
     }
 
+    // Update resolution for new texture aspect ratio
+    if (webgl.updateResolution) {
+      webgl.updateResolution(nextTexture);
+    }
+
+    // Ensure canvas is visible during transition
+    webgl.renderer.domElement.style.display = 'block';
+    
     webgl.material.uniforms.texture2.value = nextTexture;
     webgl.material.uniforms.progress.value = 0;
-    webgl.renderer.domElement.style.display = 'block';
     
     startWebGLAnimation();
 
@@ -186,8 +208,8 @@
         // Complete transition
         webgl.material.uniforms.texture1.value = nextTexture;
         webgl.material.uniforms.progress.value = 0;
-        webgl.renderer.domElement.style.display = 'none';
-        onComplete();
+        // Keep canvas visible
+        if (onComplete) onComplete();
       }
     }
 
@@ -251,23 +273,30 @@
       // First load or no WebGL - just switch
       visible.style.display = "none";
       visible.style.opacity = "0";
+      
       if (webgl && webgl.material.uniforms.texture1.value === null) {
-        // Set up WebGL with first texture after image loads
+        // Set up WebGL with first texture
         const tex = new THREE.Texture(next);
         tex.needsUpdate = true;
         webgl.material.uniforms.texture1.value = tex;
-        webgl.renderer.domElement.style.display = 'none';
-        // Force initial render
-        webgl.renderer.render(webgl.scene, webgl.camera);
+        
+        // Update resolution for this texture
+        if (webgl.updateResolution) {
+          webgl.updateResolution(tex);
+        }
+        
+        // Show canvas after first image
+        webgl.renderer.domElement.style.display = 'block';
+        startWebGLAnimation();
       }
     } else {
-      // WebGL transition
+      // WebGL transition - create texture from next image
       const nextTex = new THREE.Texture(next);
       nextTex.needsUpdate = true;
       
+      // Start transition (this shows the canvas)
       transitionToImage(nextTex, () => {
-        visible.style.display = "none";
-        visible.style.opacity = "0";
+        // After transition completes, swap the primary/secondary
       });
     }
     state.primaryVisible = !state.primaryVisible;
